@@ -16,6 +16,7 @@ func run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) i
 		fmt.Fprintln(stderr, "usage: degra-checker [-c|--config PATH] < graph.json")
 	}
 	var filename string
+	referenceFile := flags.String("references", "", "check language-resolved import references")
 	flags.StringVar(&filename, "c", "", "layer configuration")
 	flags.StringVar(&filename, "config", "", "layer configuration")
 	if err := flags.Parse(args); err != nil {
@@ -48,6 +49,9 @@ func run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) i
 	if err != nil {
 		fmt.Fprintf(stderr, "graph: %v\n", err)
 		return 2
+	}
+	if *referenceFile != "" {
+		return checkReferences(cfg, edges, *referenceFile, stdout, stderr)
 	}
 
 	layers := make(map[string]int)
