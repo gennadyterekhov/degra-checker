@@ -1,0 +1,11 @@
+{
+  "debug": false,
+  "rootDir": "src",
+  "layers": [
+    "src/Dto",
+    "src/Project",
+    "src/Config",
+    "src/Syntax",
+    "src/Analyzer"
+  ]
+}

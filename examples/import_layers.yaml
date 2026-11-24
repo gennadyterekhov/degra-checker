@@ -1,0 +1,9 @@
+debug: false
+layers:
+  - internal/project
+  - internal/layers
+  - internal/config
+  - internal/filechecker
+  - internal/analyzer
+  - internal/cli
+  - cmd
