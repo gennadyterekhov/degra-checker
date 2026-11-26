@@ -7,7 +7,7 @@ Checks the direction of imports between layers in a JSON graph from `degra`.
 From the `degra-checker` directory:
 
 ```sh
-go build .
+go build -o degra-checker ./cmd
 ./degra-checker --config examples/import_layers.yaml < ../degra/examples/output/imports-go.json
 ```
 

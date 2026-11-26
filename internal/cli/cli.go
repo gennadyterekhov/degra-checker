@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -7,9 +7,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/gennadyterekhov/degra-checker/internal/checker"
 )
 
-func run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) int {
+func Run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("degra-checker", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	flags.Usage = func() {
@@ -31,7 +33,7 @@ func run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) i
 	}
 	if filename == "" {
 		var err error
-		filename, err = findConfig(cwd)
+		filename, err = checker.FindConfig(cwd)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 2
@@ -40,39 +42,36 @@ func run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) i
 		filename = filepath.Join(cwd, filename)
 	}
 
-	cfg, err := readConfig(filename)
+	cfg, err := checker.ReadConfig(filename)
 	if err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", filename, err)
 		return 2
 	}
-	edges, err := readGraph(input)
+	edges, err := checker.ReadGraph(input)
 	if err != nil {
 		fmt.Fprintf(stderr, "graph: %v\n", err)
 		return 2
 	}
 	if *referenceFile != "" {
-		return checkReferences(cfg, edges, *referenceFile, stdout, stderr)
+		data, err := os.ReadFile(*referenceFile)
+		var refs []checker.Reference
+		if err == nil {
+			err = json.Unmarshal(data, &refs)
+		}
+		if err != nil {
+			fmt.Fprintf(stderr, "references: %v\n", err)
+			return 2
+		}
+		return outputViolations(cfg.CheckReferences(edges, refs), stdout, stderr)
 	}
 
-	layers := make(map[string]int)
-	layer := func(file string) int {
-		if index, known := layers[file]; known {
-			return index
-		}
-		index := cfg.layer(file)
-		layers[file] = index
-		if cfg.debug {
-			fmt.Fprintf(stderr, "processing file %s\n", file)
-		}
-		return index
-	}
-	violations := []violation{}
-	for _, e := range edges {
-		from, to := layer(e.From), layer(e.To)
-		if from >= 0 && from < to {
-			violations = append(violations, violation{e, cfg.layers[from], cfg.layers[to]})
-		}
-	}
+	violations := cfg.Check(edges, func(file string) {
+		fmt.Fprintf(stderr, "processing file %s\n", file)
+	})
+	return outputViolations(violations, stdout, stderr)
+}
+
+func outputViolations[T any](violations []T, stdout, stderr io.Writer) int {
 	if err := json.NewEncoder(stdout).Encode(violations); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2
@@ -81,13 +80,4 @@ func run(args []string, cwd string, input io.Reader, stdout, stderr io.Writer) i
 		return 1
 	}
 	return 0
-}
-
-func main() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-	os.Exit(run(os.Args[1:], cwd, os.Stdin, os.Stdout, os.Stderr))
 }

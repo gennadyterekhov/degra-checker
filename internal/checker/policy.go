@@ -1,4 +1,4 @@
-package main
+package checker
 
 import (
 	"path"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func (cfg config) layer(file string) int {
+func (cfg Config) layer(file string) int {
 	dir := path.Dir(file)
 	if !within(dir, cfg.rootDir) || cfg.ignoreTests && isTestFile(file) {
 		return -1

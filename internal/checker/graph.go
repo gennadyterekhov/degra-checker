@@ -1,4 +1,4 @@
-package main
+package checker
 
 import (
 	"encoding/json"
@@ -10,18 +10,18 @@ import (
 	"strings"
 )
 
-type edge struct {
+type Edge struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 }
 
 type violation struct {
-	edge
+	Edge
 	FromLayer string `json:"fromLayer"`
 	ToLayer   string `json:"toLayer"`
 }
 
-func readGraph(input io.Reader) ([]edge, error) {
+func ReadGraph(input io.Reader) ([]Edge, error) {
 	decoder := json.NewDecoder(input)
 	var data json.RawMessage
 	if err := decoder.Decode(&data); err != nil {
@@ -31,7 +31,7 @@ func readGraph(input io.Reader) ([]edge, error) {
 		return nil, errors.New("expected exactly one graph JSON document")
 	}
 
-	var edges []edge
+	var edges []Edge
 	switch data[0] {
 	case '{':
 		var grouped map[string][]string
@@ -43,7 +43,7 @@ func readGraph(input io.Reader) ([]edge, error) {
 				return nil, fmt.Errorf("expected a relative file path and an array of imports for %q", from)
 			}
 			for _, to := range targets {
-				edges = append(edges, edge{from, to})
+				edges = append(edges, Edge{from, to})
 			}
 		}
 	case '[':
@@ -59,7 +59,7 @@ func readGraph(input io.Reader) ([]edge, error) {
 			return nil, fmt.Errorf("invalid file path in edge from %q to %q", e.From, e.To)
 		}
 	}
-	slices.SortFunc(edges, func(a, b edge) int {
+	slices.SortFunc(edges, func(a, b Edge) int {
 		if order := strings.Compare(a.From, b.From); order != 0 {
 			return order
 		}

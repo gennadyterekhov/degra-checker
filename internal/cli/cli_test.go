@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestCheck(t *testing.T) {
 				t.Fatal(err)
 			}
 			var stdout, stderr bytes.Buffer
-			code := run([]string{"-c", config}, dir, strings.NewReader(tt.graph), &stdout, &stderr)
+			code := Run([]string{"-c", config}, dir, strings.NewReader(tt.graph), &stdout, &stderr)
 			want := "[{\"from\":\"src/domain/main.go\",\"to\":\"src/app/run.go\",\"fromLayer\":\"src/domain\",\"toLayer\":\"app\"}]\n"
 			if code != 1 || stdout.String() != want || stderr.Len() != 0 {
 				t.Fatalf("code %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
@@ -49,7 +49,7 @@ func TestCheckPathPriorityAndPythonModules(t *testing.T) {
 	}
 	graph := `{"src/domain/b.py":["src/domain/special/a.py"],"src/pkg/analyzer/layer_policy.py":["src/pkg/analyzer/main.py"]}`
 	var stdout, stderr bytes.Buffer
-	code := run(nil, dir, strings.NewReader(graph), &stdout, &stderr)
+	code := Run(nil, dir, strings.NewReader(graph), &stdout, &stderr)
 	want := `[{"from":"src/domain/b.py","to":"src/domain/special/a.py","fromLayer":"domain","toLayer":"src/domain/special"},{"from":"src/pkg/analyzer/layer_policy.py","to":"src/pkg/analyzer/main.py","fromLayer":"analyzer.layer_policy","toLayer":"analyzer"}]` + "\n"
 	if code != 1 || stdout.String() != want || stderr.Len() != 0 {
 		t.Fatalf("code %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
@@ -71,7 +71,7 @@ func TestCleanAndInvalid(t *testing.T) {
 			t.Fatal(err)
 		}
 		var stdout, stderr bytes.Buffer
-		code := run(nil, dir, strings.NewReader(tt.graph), &stdout, &stderr)
+		code := Run(nil, dir, strings.NewReader(tt.graph), &stdout, &stderr)
 		if code != tt.code || code == 0 && (stdout.String() != "[]\n" || stderr.Len() != 0) ||
 			code == 2 && (stdout.Len() != 0 || stderr.Len() == 0) {
 			t.Errorf("config %s, graph %s: code %d, stdout %q, stderr %q", tt.config, tt.graph, code, stdout.String(), stderr.String())

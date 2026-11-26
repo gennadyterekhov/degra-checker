@@ -1,17 +1,11 @@
-package main
+package checker
 
-import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"os"
-	"slices"
-)
+import "slices"
 
-// A reference can describe a resolved edge or an import whose target has no
+// A Reference can describe a resolved edge or an import whose target has no
 // file in the selected graph, such as a Go package outside the selection.
-type reference struct {
-	edge
+type Reference struct {
+	Edge
 	ResolvedLayers bool   `json:"resolvedLayers"`
 	FromLayer      string `json:"fromLayer"`
 	ToLayer        string `json:"toLayer"`
@@ -23,23 +17,14 @@ type referenceViolation struct {
 	ToLayer   string `json:"toLayer"`
 }
 
-func checkReferences(cfg config, edges []edge, filename string, stdout, stderr io.Writer) int {
-	data, err := os.ReadFile(filename)
-	var refs []reference
-	if err == nil {
-		err = json.Unmarshal(data, &refs)
-	}
-	if err != nil {
-		fmt.Fprintf(stderr, "references: %v\n", err)
-		return 2
-	}
-	graph := make(map[edge]bool, len(edges))
+func (cfg Config) CheckReferences(edges []Edge, refs []Reference) []referenceViolation {
+	graph := make(map[Edge]bool, len(edges))
 	for _, e := range edges {
 		graph[e] = true
 	}
 	violations := []referenceViolation{}
 	for i, ref := range refs {
-		if ref.To != "" && !graph[ref.edge] {
+		if ref.To != "" && !graph[ref.Edge] {
 			continue
 		}
 		from, to := slices.Index(cfg.layers, ref.FromLayer), slices.Index(cfg.layers, ref.ToLayer)
@@ -50,12 +35,5 @@ func checkReferences(cfg config, edges []edge, filename string, stdout, stderr i
 			violations = append(violations, referenceViolation{i, cfg.layers[from], cfg.layers[to]})
 		}
 	}
-	if err := json.NewEncoder(stdout).Encode(violations); err != nil {
-		fmt.Fprintln(stderr, err)
-		return 2
-	}
-	if len(violations) != 0 {
-		return 1
-	}
-	return 0
+	return violations
 }
